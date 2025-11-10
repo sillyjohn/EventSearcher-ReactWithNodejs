@@ -13,9 +13,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@spotify/web-api-ts-sdk": "^1.2.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "mongodb": "^7.0.0",
     "ngeohash": "^0.6.3"
   },
   "devDependencies": {

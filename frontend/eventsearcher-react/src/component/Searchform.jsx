@@ -1,88 +1,24 @@
 import React, { Component } from "react";
+import { Input } from "../../components/ui/input.jsx";
+import { Button } from "../../components/ui/button.jsx";
+import { Label } from "../../components/ui/label.jsx";
+import { Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select.jsx";
+import { Switch } from "../../components/ui/switch.jsx";
+
 const deBugMode = true;
 const debugURL = import.meta.env.VITE_BACKEND_URL;
 const prodURL = "https://eventsearcher-backend.onrender.com";
 const GoogleKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-function validateKeyword() {
-    const keywordInput = document.getElementById("keyword");
-    const keywordLabel = document.getElementById("keyword-label");
-    const keywordRequiredLabel = document.getElementById("keyword-required-label");
-    if (keywordInput.value.trim() === "") {
-        keywordRequiredLabel.hidden = false;
-        keywordInput.className = "w-full h-10 border border-red-500 rounded-md px-2 py-1";
-        keywordLabel.className = "text-red-600";
-        return false;
-    }
-    keywordRequiredLabel.hidden = true;
-    keywordInput.className = "w-full h-10 border border-gray-300 rounded-md px-2 py-1";
-    keywordLabel.className = "text-gray-600";
-    return true;
-}
-
-function validateLocation() {
-    const locationLabel = document.getElementById("location-label");
-    const locationInput = document.getElementById("location");
-    const locationCheckbox = document.getElementById("auto-detect-checkbox");
-    const locationRequiredLabel = document.getElementById("location-required-label");
-    const locationCheckboxLabel = document.getElementById("location-checkbox-label");
-    const autoDetectCheckbox = document.getElementById("auto-detect-checkbox");
-    if (!autoDetectCheckbox.checked && locationInput.value.trim() === "") {
-        locationRequiredLabel.hidden = false;
-        locationInput.className = "w-full h-10 border border-red-500 rounded-md px-2 py-1";
-        locationLabel.className = "text-red-600";
-        locationCheckbox.className = "border-red-600 focus:ring-red-500";
-        locationCheckboxLabel.className = "text-red-600 pl-1 text-sm";
-        return false;
-    }
-    locationRequiredLabel.hidden = true;
-    locationInput.className = "w-full h-10 border border-gray-300 rounded-md px-2 py-1";
-    locationLabel.className = "text-gray-600";
-    locationCheckbox.className = "border-gray-300";
-    locationCheckboxLabel.className = "text-gray-600 text-sm pl-1";
-    return true;
-}
-
-function validateDistance() {
-    const distanceInput = document.getElementById("distance");
-    const distanceLabel = document.getElementById("distance-label");
-    const distanceRequiredLabel = document.getElementById("distance-required-label");
-    if (distanceInput.value) {
-        const distanceValue = parseInt(distanceInput.value, 10);
-        if (isNaN(distanceValue) || distanceValue <= 0 || distanceValue > 100) {
-            distanceRequiredLabel.hidden = false;
-            distanceInput.className = "w-full h-10 border border-red-500 rounded-md px-2 py-1";
-            distanceLabel.className = "text-red-600";
-            return false;
-        }
-    }
-    distanceRequiredLabel.hidden = true;
-    distanceInput.className = "w-full h-10 border border-gray-300 rounded-md px-2 py-1";
-    distanceLabel.className = "text-gray-600";  
-    return true;
-}
-
-function autoDetectLocation() {
-    const autoDetectCheckbox = document.getElementById("auto-detect-checkbox");
-    const locationInput = document.getElementById("location");
-    if (autoDetectCheckbox.checked) {
-        locationInput.value = "Location will be auto-detected";
-        locationInput.className = "w-full h-10 text-md text-gray-500 border border-gray-300 rounded-md bg-gray-100 px-2 py-1";
-        locationInput.disabled = true;
-
-        //IPinfo fetch
-        getLocationByIP().then((loc) => {
-            console.log("Detected location:", loc);
-            locationInput.value = loc;
-        });
-
-    }else{
-        locationInput.value = "";
-        locationInput.className = "w-full h-10 border border-gray-300 rounded-md px-2 py-1";
-        locationInput.disabled = false;
-    }
-}
 
 const ipinfo_url_with_token = "https://ipinfo.io/?token=d8eeb3713deeb3";
+
 async function getLocationByIP() {
     const response = await fetch(ipinfo_url_with_token);
     if (!response.ok) {
@@ -110,205 +46,466 @@ async function googleGeocode(location) {
     } else {
         throw new Error("Geocoding failed");
     }
-
-    
-}
-async function handleSubmit(event) {
-    event.preventDefault(); // Prevent default form submission
-    
-    console.log("handleSubmit called");
-    
-    // Validate form fields
-    const isKeywordValid = validateKeyword();
-    const isLocationValid = validateLocation();
-    const isDistanceValid = validateDistance();
-    console.log("Validation results:", { isKeywordValid, isLocationValid, isDistanceValid });
-
-    if (!isKeywordValid || !isLocationValid || !isDistanceValid) {
-        console.log("Validation failed");
-        return;
-    }
-
-    try {
-        // Get form data
-        const form = document.getElementById("searchform");
-        const formData = new FormData(form);
-        
-        const keyword = formData.get("keyword");
-        const category = formData.get("category");
-        const distance = formData.get("distance") || "10";
-        let location = formData.get("location");
-        var latLng = "";
-        // Check if auto-detect is enabled
-        const autoDetectCheckbox = document.getElementById("auto-detect-checkbox");
-        if (autoDetectCheckbox.checked) {
-            // Get location from IP
-            latLng = await getLocationByIP();
-            console.log("Auto-detected location:", latLng);
-        }else{
-            // Convert location to lat,lng using Google Geocoding API
-            latLng = await googleGeocode(location);
-            console.log("Geocoded coordinates:", latLng);
-        }
-        
-        // Build query parameters for GET request
-        const queryParams = new URLSearchParams({
-            keyword: keyword,
-            category: category,
-            distance: distance,
-            location: latLng
-        });
-        
-        // Choose URL based on debug mode
-        const baseURL = deBugMode ? debugURL : prodURL;
-        const searchURL = `${baseURL}/search?${queryParams.toString()}`;
-        
-        console.log("Fetching from:", searchURL);
-        
-        // Make AJAX GET request to backend
-        const response = await fetch(searchURL, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log("Search results:", data);
-        
-        // TODO: Handle the search results (display them in Eventgrid component)
-        // You can emit an event or use state management to pass data to Eventgrid
-        
-    } catch (error) {
-        console.error("Error during form submission:", error);
-    }
 }
 
 export class Searchform extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            keyword: '',
+            category: 'all',
+            location: '',
+            distance: '10',
+            autoDetect: false,
+            suggestions: [],
+            lastSuggestions: [], // Store the last fetched suggestions
+            showSuggestions: false,
+            isSearching: false, // Track if search is in progress
+            errors: {
+                keyword: '',
+                location: '',
+                distance: ''
+            }
+        };
+        this.suggestionsTimeoutId = null;
+    }
+
+    componentDidMount() {
+        // Set up the callback so handleSubmit can access it
+        window.onSearchResults = this.props.onSearchResults;
+        // Add click listener for closing suggestions
+        document.addEventListener('mousedown', this.handleClickOutside);
+    }
+
+    componentWillUnmount() {
+        // Clean up the callback when component unmounts
+        delete window.onSearchResults;
+        // Remove click listener
+        document.removeEventListener('mousedown', this.handleClickOutside);
+        // Clear timeout
+        if (this.suggestionsTimeoutId) {
+            clearTimeout(this.suggestionsTimeoutId);
+        }
+    }
+
+    validateForm = () => {
+        const errors = {
+            keyword: '',
+            location: '',
+            distance: ''
+        };
+        let isValid = true;
+
+        // Validate keyword
+        if (!this.state.keyword.trim()) {
+            errors.keyword = 'Keyword is required.';
+            isValid = false;
+        }
+
+        // Validate location
+        if (!this.state.autoDetect && !this.state.location.trim()) {
+            errors.location = 'Location is required if Auto-detect is not checked.';
+            isValid = false;
+        }
+
+        // Validate distance
+        const dist = parseInt(this.state.distance, 10);
+        if (!this.state.distance || isNaN(dist) || dist < 1 || dist > 100) {
+            errors.distance = 'Distance must be between 1 and 100 miles.';
+            isValid = false;
+        }
+
+        this.setState({ errors });
+        return isValid;
+    }
+
+    handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        if (!this.validateForm()) {
+            return;
+        }
+
+        // Set loading state to true
+        this.setState({ isSearching: true });
+        
+        // Notify parent that search is starting
+        if (this.props.onSearchStart) {
+            this.props.onSearchStart();
+        }
+
+        try {
+            const { keyword, category, distance, location, autoDetect } = this.state;
+            let latLng = "";
+
+            // Get location
+            if (autoDetect) {
+                latLng = await getLocationByIP();
+                console.log("Auto-detected location:", latLng);
+            } else {
+                latLng = await googleGeocode(location);
+                console.log("Geocoded coordinates:", latLng);
+            }
+
+            // Build query parameters for GET request
+            const queryParams = new URLSearchParams({
+                keyword: keyword,
+                category: category,
+                distance: distance || "10",
+                location: latLng
+            });
+
+            // Choose URL based on debug mode
+            const baseURL = deBugMode ? debugURL : prodURL;
+            const searchURL = `${baseURL}/search?${queryParams.toString()}`;
+
+            console.log("Fetching from:", searchURL);
+
+            // Make AJAX GET request to backend
+            const response = await fetch(searchURL, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("Search results:", data);
+
+            // Call the onSearchResults callback to pass data to parent (App.jsx)
+            if (window.onSearchResults) {
+                window.onSearchResults(data);
+            }
+
+        } catch (error) {
+            console.error("Error during form submission:", error);
+        } finally {
+            // Set loading state to false
+            this.setState({ isSearching: false });
+        }
+    }
+
+    handleAutoDetectChange = (checked) => {
+        this.setState({ 
+            autoDetect: checked,
+            location: checked ? '' : this.state.location,
+
+            errors: { ...this.state.errors, location: '' }
+        });
+    }
+
+    handleKeywordChange = async (e) => {
+        const value = e.target.value;
+        this.setState({ 
+            keyword: value, 
+            errors: { ...this.state.errors, keyword: '' }
+        });
+
+        // Clear previous timeout
+        if (this.suggestionsTimeoutId) {
+            clearTimeout(this.suggestionsTimeoutId);
+        }
+
+        // If input is empty, hide suggestions
+        if (!value.trim()) {
+            this.setState({ suggestions: [], showSuggestions: false });
+            return;
+        }
+
+        // Debounce the API call
+        this.suggestionsTimeoutId = setTimeout(async () => {
+            try {
+                const suggestions = await this.keywordSuggestion(value);
+                this.setState({ 
+                    suggestions: suggestions || [],
+                    lastSuggestions: suggestions || [], // Store last suggestions
+                    showSuggestions: true 
+                });
+            } catch (error) {
+                console.error("Error fetching suggestions:", error);
+                this.setState({ suggestions: [], showSuggestions: false });
+            }
+        }, 300); // Wait 300ms after user stops typing
+    }
+
+    handleSuggestionClick = (suggestion) => {
+        this.setState({ 
+            keyword: suggestion, 
+            showSuggestions: false
+        });
+    }
+
+    handleToggleSuggestions = () => {
+        // Toggle the suggestions dropdown, show last suggestions if available
+        this.setState(prevState => ({
+            showSuggestions: !prevState.showSuggestions,
+            suggestions: prevState.lastSuggestions
+        }));
+    }
+
+    handleClearKeyword = () => {
+        this.setState({ 
+            keyword: '', 
+            suggestions: [],
+            showSuggestions: false,
+            errors: { ...this.state.errors, keyword: '' }
+        });
+    }
+
+    handleClickOutside = (e) => {
+        // Close suggestions when clicking outside
+        if (!e.target.closest('.keyword-autocomplete-container')) {
+            this.setState({ showSuggestions: false });
+        }
+    }
+
+    //Keyword suggestion
+    keywordSuggestion = async (input) => {
+        const queryParams = new URLSearchParams({ keyword: input });
+        // Choose URL based on debug mode
+        const baseURL = deBugMode ? debugURL : prodURL;
+        const searchURL = `${baseURL}/suggest?${queryParams.toString()}`;
+
+        try {
+            const response = await fetch(searchURL);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            console.log("Keyword suggestions:", data);
+            
+            // Extract event names from the response
+            if (data._embedded && data._embedded.attractions) {
+                return data._embedded.attractions.map(event => event.name);
+            }
+            
+            return [];
+        } catch (error) {
+            console.error("Error fetching keyword suggestions:", error);
+            return [];
+        }
+    }
+
     render() {
+        const { keyword, category, location, distance, autoDetect, errors, suggestions, showSuggestions, lastSuggestions, isSearching } = this.state;
+
         return (
-            <div>
-                <form id="searchform" className="flex flex-row justify-between mt-8 mr-08 mb-8 ml-8 p-4  space-x-4">
-                    <div class="keyword-container" className="flex flex-col w-full">
-                        <div class="keyword-label-container" className="flex flex-row">
-                            <label id="keyword-label" for="keyword">
-                                Keyword:
-                            </label>
-                            <label
-                                className="text-red-600 pl-1"
-                                title="Please fill out this field"
-                            >
-                                *
-                            </label>
+            <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
+                <form onSubmit={this.handleSubmit} className="max-w-7xl mx-auto" noValidate>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        {/* Keyword Field */}
+                        <div className="flex flex-col">
+                            <Label htmlFor="keyword" className={`text-sm font-medium mb-2 ${errors.keyword ? "text-red-600" : "text-gray-700"}`}>
+                                Keyword <span className="text-red-600">*</span>
+                            </Label>
+                            <div className="relative keyword-autocomplete-container">
+                                <Input
+                                    id="keyword"
+                                    name="keyword"
+                                    type="text"
+                                    placeholder="Search for events..."
+                                    value={keyword}
+                                    onChange={this.handleKeywordChange}
+                                    className={`pr-16 ${errors.keyword ? "border-red-500" : ""}`}
+                                    autoComplete="off"
+                                />
+                                
+                                {/* Clear Button */}
+                                {keyword && (
+                                    <button
+                                        type="button"
+                                        onClick={this.handleClearKeyword}
+                                        className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                        aria-label="Clear"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-4 w-4"
+                                            viewBox="0 0 20 20"
+                                            fill="currentColor"
+                                        >
+                                            <path
+                                                fillRule="evenodd"
+                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                                clipRule="evenodd"
+                                            />
+                                        </svg>
+                                    </button>
+                                )}
+                                
+                                {/* Dropdown Arrow Button */}
+                                <button
+                                    type="button"
+                                    onClick={this.handleToggleSuggestions}
+                                    disabled={lastSuggestions.length === 0}
+                                    className={`absolute right-2 top-1/2 -translate-y-1/2 transition-colors ${
+                                        lastSuggestions.length === 0 
+                                            ? 'text-gray-300 cursor-not-allowed' 
+                                            : 'text-gray-400 hover:text-gray-600'
+                                    }`}
+                                    aria-label="Toggle suggestions"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className={`h-4 w-4 transition-transform ${showSuggestions ? 'rotate-180' : ''}`}
+                                        viewBox="0 0 20 20"
+                                        fill="currentColor"
+                                    >
+                                        <path
+                                            fillRule="evenodd"
+                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                            clipRule="evenodd"
+                                        />
+                                    </svg>
+                                </button>
+                                
+                                {/* Suggestions Dropdown */}
+                                {showSuggestions && suggestions.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-md shadow-lg max-h-60 overflow-y-auto z-50">
+                                        {suggestions.map((suggestion, index) => (
+                                            <div
+                                                key={index}
+                                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm transition-colors"
+                                                onClick={() => this.handleSuggestionClick(suggestion)}
+                                            >
+                                                {suggestion}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="h-5 mt-1">
+                                {errors.keyword && (
+                                    <p className="text-xs text-red-600">{errors.keyword}</p>
+                                )}
+                            </div>
                         </div>
 
-                        <input
-                            className="w-full h-10 border border-gray-300 rounded-md px-2 py-1"
-                            type="text"
-                            id="keyword"
-                            name="keyword"
-                            placeholder="Search for events..."
-                            required
-                        />
-                        <label id="keyword-required-label" className="text-sm text-red-600 h-5" hidden>Keyword is required.</label>
-                    </div>
-                    <div class="catergory-container" className="flex flex-col w-full ">
-                        <label id="category-label" for="category">
-                            Category:
-                        </label>
-                        <select className="w-full h-10 border border-gray-300 rounded-md px-2 py-1" id="category-input" name="category">
-                            <option value="all">All</option>
-                            <option value="music">Music</option>
-                            <option value="sport">Sport</option>
-                            <option value="arts">Arts & Theatre</option>
-                            <option value="film">Film</option>
-                            <option value="miscell">Miscellaneous</option>
-                        </select>
-                        <div className="h-5"></div>
-                    </div>
-                    <div class="location-container" className="flex flex-col w-full ">
-                        <div class="location-label-checkbox-container" className="flex flex-row justify-between">
-                            <div class="location-label-container" className="flex flex-row">
-                                <label id="location-label" for="location">
-                                    Location:
-                                </label>
-                                <label
-                                    className="text-red-600 pl-1"
-                                    title="Please fill out this field"
-                                >
-                                    *
-                                </label>
+                        {/* Category Field */}
+                        <div className="flex flex-col">
+                            <Label htmlFor="category" className="text-sm font-medium mb-2 text-gray-700">
+                                Category <span className="text-red-600">*</span>
+                            </Label>
+                            <Select
+                                value={category}
+                                onValueChange={(value) => this.setState({ category: value })}
+                            >
+                                <SelectTrigger id="category" className="w-full">
+                                    <SelectValue placeholder="Select category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All</SelectItem>
+                                    <SelectItem value="music">Music</SelectItem>
+                                    <SelectItem value="sport">Sports</SelectItem>
+                                    <SelectItem value="arts">Arts & Theatre</SelectItem>
+                                    <SelectItem value="film">Film</SelectItem>
+                                    <SelectItem value="miscell">Miscellaneous</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="h-5 mt-1"></div>
+                        </div>
+
+                        {/* Location Field */}
+                        <div className="flex flex-col">
+                            <div className="flex items-center justify-between mb-2">
+                                <Label htmlFor="location" className={`text-sm font-medium ${errors.location ? "text-red-600" : "text-gray-700"}`}>
+                                    Location <span className="text-red-600">*</span>
+                                </Label>
+                                <div className="flex items-center gap-1">
+                                    <Switch
+                                        id="auto-detect"
+                                        checked={autoDetect}
+                                        onCheckedChange={this.handleAutoDetectChange}
+                                    />
+                                    <Label htmlFor="auto-detect" className="text-xs font-normal cursor-pointer text-gray-700">
+                                        Auto-detect
+                                    </Label>
+                                </div>
                             </div>
-                            <div class="location-checkbox-container">
-                                <label
-                                    id="location-checkbox-label"
-                                    for="location-checkbox"
-                                    className="text-sm"
-                                >
-                                    Auto-Detect Location
-                                </label>
-                                <input
-                                    onChange={autoDetectLocation}   
-                                    type="checkbox"
-                                    id="auto-detect-checkbox"
-                                    name="auto-detect-checkbox"
-                                />
+                            <Input
+                                id="location"
+                                name="location"
+                                type="text"
+                                placeholder={autoDetect ? "Location will be auto detected..." : "Enter city, district or street..."}
+                                value={location}
+                                onChange={(e) => this.setState({ location: e.target.value, errors: { ...errors, location: '' } })}
+                                disabled={autoDetect}
+                                className={errors.location ? "border-red-500" : ""}
+                            />
+                            <div className="h-5 mt-1">
+                                {errors.location && (
+                                    <p className="text-xs text-red-600">{errors.location}</p>
+                                )}
                             </div>
                         </div>
-                        <input
-                            className="w-full h-10 border border-gray-300 rounded-md px-2 py-1"
-                            type="text"
-                            id="location"
-                            name="location"
-                            placeholder="Enter location"
-                            required
-                        />
-                        <label id="location-required-label" className="text-sm text-red-600 h-5" hidden>Location is required if Auto-detect is not checked.</label>
-                    </div>
-                    <div class="distance-container" className="flex flex-col w-full ">
-                        <label id="distance-label" for="distance">
-                            Distance (miles):
-                        </label>
-                        <input
-                            className="w-full h-10 border border-gray-300 rounded-md px-2 py-1"
-                            type="number"
-                            id="distance"
-                            name="distance"
-                            placeholder="10"
-                            min="1"
-                            max="100"
-                        />
-                        <label id="distance-required-label" className="text-sm text-red-600 h-5" hidden>Distance must be between 1 and 100 miles.</label>
-                    </div>
-                    <div class="submit-container" className="flex flex-col w-full">
-                        <label className="invisible">Button:</label>
-                        <button
-                            type="submit"
-                            onClick={handleSubmit}
-                            className="w-full h-10 bg-black text-white rounded-md hover:bg-gray-800 flex items-center justify-center space-x-2"
-                            style={{ backgroundColor: '#000000' }}
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+
+                        {/* Distance Field */}
+                        <div className="flex flex-col">
+                            <Label htmlFor="distance" className={`text-sm font-medium mb-2 ${errors.distance ? "text-red-600" : "text-gray-700"}`}>
+                                Distance <span className="text-red-600">*</span>
+                            </Label>
+                            <div className="relative">
+                                <Input
+                                    id="distance"
+                                    name="distance"
+                                    type="number"
+                                    placeholder="10"
+                                    min="1"
+                                    max="100"
+                                    value={distance}
+                                    onChange={(e) => this.setState({ distance: e.target.value, errors: { ...errors, distance: '' } })}
+                                    className={`pr-16 ${errors.distance ? "border-red-500" : ""}`}
                                 />
-                            </svg>
-                            <span>Search Events</span>
-                        </button>
-                        <div className="h-5"></div>
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+                                    miles
+                                </span>
+                            </div>
+                            <div className="h-5 mt-1">
+                                {errors.distance && (
+                                    <p className="text-xs text-red-600">{errors.distance}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Submit Button */}
+                        <div className="flex flex-col justify-end">
+                            <Button
+                                type="submit"
+                                className="w-full bg-black hover:bg-gray-800 text-white h-10 "
+                                disabled={isSearching}
+                            >
+                                {isSearching ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Searching...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-4 w-4 mr-2"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth={2}
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                            />
+                                        </svg>
+                                        Search Events
+                                    </>
+                                )}
+                            </Button>
+                            <div className="h-5 mt-1"></div>
+                        </div>
                     </div>
                 </form>
             </div>
